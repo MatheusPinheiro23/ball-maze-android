@@ -1,51 +1,68 @@
 package br.edu.ifsp.sbv.ball_maze_android;
 
+import android.app.ProgressDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.view.View;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
+import android.widget.Toast;
 
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
     private SensorManager mSensorManager;
     private Sensor mSensor;
 
-    private float gravity[] = new float[3];
-    private float linear_acceleration[] = new float[3];
+    private TextView xText;
+    private TextView yText;
+    private TextView zText;
 
-    private TextView x;
-    private TextView y;
-    private TextView z;
+    private Menu menu;
+
+    public static final int BLUETOOTH_ACTIVATION_CODE = 1;
+    private static final String endereco_MAC_do_Bluetooth_Remoto = "98:D3:31:40:23:26";
+    private static final UUID MEU_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
+    // Represents a remote Bluetooth device.
+    private BluetoothDevice dispositivoBluetoohRemoto;
+    // Represents the local device Bluetooth adapter.
+    private BluetoothAdapter meuBluetoothAdapter = null;
+    // A connected or connecting Bluetooth socket.
+    private BluetoothSocket bluetoothSocket = null;
+    private InputStream inputStream = null;
+    private OutputStream outStream = null;
+
+    private Integer xOldValue = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        //Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        //setSupportActionBar(toolbar);
 
-        /*FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });*/
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
 
+        // Bluetooth
+        verificarConexaoBluetooth();
+
+        // Sensor acelerometro
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null) {
             // Tem acelerometro
@@ -55,9 +72,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // Nao tem acelerometro
         }
 
-        x = (TextView) findViewById(R.id.textViewX);
-        y = (TextView) findViewById(R.id.textViewY);
-        z = (TextView) findViewById(R.id.textViewZ);
+        xText = (TextView) findViewById(R.id.textViewX);
+        yText = (TextView) findViewById(R.id.textViewY);
+        zText = (TextView) findViewById(R.id.textViewZ);
+    }
+
+    public void verificarConexaoBluetooth() {
+        // Get a handle to the default local Bluetooth adapter.
+        meuBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        // Verifica se o celular tem Bluetooth
+        if (meuBluetoothAdapter == null) {
+            Toast.makeText(getApplicationContext(), "Dispositivo não possui adaptador Bluetooth", Toast.LENGTH_LONG).show();
+            // Finaliza a aplicação.
+            finish();
+        } else {
+        // Verifica se o bluetooth está desligado. Se sim, pede permissão para ligar.
+            if (!meuBluetoothAdapter.isEnabled()) {
+                Intent novoIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(novoIntent, BLUETOOTH_ACTIVATION_CODE);
+            }
+        }
     }
 
     @Override
@@ -67,48 +101,42 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public final void onSensorChanged(SensorEvent event) {
-        // In this example, alpha is calculated as t / (t + dT),
-        // where t is the low-pass filter's time-constant and
-        // dT is the event delivery rate.
+        Float x = event.values[0];
+        Float y = event.values[1];
+        Float z = event.values[2];
 
-        final float alpha = 0.8f;
+         /*
+        Os valores ocilam de -10 a 10.
+        Quanto maior o valor de X mais ele ta caindo para a esquerda - Positivo Esqueda
+        Quanto menor o valor de X mais ele ta caindo para a direita  - Negativo Direita
+        Se o valor de  X for 0 então o celular ta em pé - Nem Direita Nem Esquerda
+        Se o valor de Y for 0 então o cel ta "deitado"
+         Se o valor de Y for negativo então ta de cabeça pra baixo, então quanto menor y mais ele ta inclinando pra ir pra baixo
+        Se o valor de Z for 0 então o dispositivo esta reto na horizontal.
+        Quanto maioro o valor de Z Mais ele esta inclinado para frente
+        Quanto menor o valor de Z Mais ele esta inclinado para traz.
+        */
+        xText.setText("Posição X: " + x.intValue() + " Float: " + x);
+        yText.setText("Posição Y: " + y.intValue() + " Float: " + y);
+        zText.setText("Posição Z: " + z.intValue() + " Float: " + z);
 
-        // Isolate the force of gravity with the low-pass filter.
-        gravity[0] = alpha * gravity[0] + (1 - alpha) * event.values[0];
-        gravity[1] = alpha * gravity[1] + (1 - alpha) * event.values[1];
-        gravity[2] = alpha * gravity[2] + (1 - alpha) * event.values[2];
+        if (bluetoothSocket != null && bluetoothSocket.isConnected()) {
 
-        // Remove the gravity contribution with the high-pass filter.
-        linear_acceleration[0] = event.values[0] - gravity[0];
-        linear_acceleration[1] = event.values[1] - gravity[1];
-        linear_acceleration[2] = event.values[2] - gravity[2];
-
-        x.setText(String.valueOf(linear_acceleration[0]));
-        y.setText(String.valueOf(linear_acceleration[1]));
-        z.setText(String.valueOf(linear_acceleration[2]));
+            if (x.intValue() != xOldValue) {
+                sendData(String.valueOf(x.intValue()));
+                xOldValue = x.intValue();
+            }
+        }
     }
 
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (item.getItemId()) {
+            case R.id.action_conectar: new Conectar().execute(); break;
+            case R.id.action_desconectar: new Desconectar().execute(); break;
         }
-
-        return super.onOptionsItemSelected(item);
+        return true;
     }
 
     @Override
@@ -132,5 +160,147 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onPause();
         mSensorManager.unregisterListener(this);
 
+    }
+
+    private class Conectar extends AsyncTask<Void, Void, Void> {
+
+        private ProgressDialog dialog;
+        private String message = "";
+
+        protected Void doInBackground(Void... params) {
+
+            if (BluetoothAdapter.checkBluetoothAddress(endereco_MAC_do_Bluetooth_Remoto)) {
+                dispositivoBluetoohRemoto = meuBluetoothAdapter.getRemoteDevice(endereco_MAC_do_Bluetooth_Remoto);
+
+                try {
+                    bluetoothSocket = dispositivoBluetoohRemoto.createInsecureRfcommSocketToServiceRecord(MEU_UUID);
+                    bluetoothSocket.connect();
+
+                    message = "Conectado";
+
+                    // Create a data stream so we can talk to server.
+                    try {
+                        outStream = bluetoothSocket.getOutputStream();
+                    } catch (IOException e) {
+                        message = "In onResume() and output stream creation failed:" + e.getMessage() + ".";
+                    }
+                } catch (IOException e) {
+                    Log.e("ERRO AO CONECTAR", "O erro foi" + e.getMessage());
+                    message = "Conexão não foi estabelecida";
+                }
+            } else {
+                message = "Endereço MAC do dispositivo Bluetooth remoto não é válido";
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            dialog = ProgressDialog.show(MainActivity.this, "",
+                    "Conectando...", true);
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            if (dialog.isShowing()) {
+                dialog.dismiss();
+            }
+
+            if(!"".equals(message)) {
+                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+
+                if("CONECTADO".equalsIgnoreCase(message)) {
+                    MenuItem menuItemConectar = menu.findItem(R.id.action_conectar);
+                    menuItemConectar.setVisible(false);
+
+                    MenuItem menuItemDesconectar = menu.findItem(R.id.action_desconectar);
+                    menuItemDesconectar.setVisible(true);
+                }
+            }
+        }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        this.menu = menu;
+
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+
+        MenuItem menuItemDesconectar = menu.findItem(R.id.action_desconectar);
+        menuItemDesconectar.setVisible(false);
+
+        return true;
+    }
+
+    private class Desconectar extends AsyncTask<String, Integer, Void> {
+
+        private ProgressDialog dialog;
+        private String message = "";
+
+        protected Void doInBackground(String... params) {
+
+            if (bluetoothSocket != null) {
+                try {
+
+                    // Immediately close this socket, and release all associated resources.
+                    bluetoothSocket.close();
+                    bluetoothSocket = null;
+                    message = "Desconectado";
+                } catch (IOException e) {
+                    Log.e("ERRO AO DESCONECTAR", "O erro foi" + e.getMessage());
+
+                }
+            } else {
+                message = "Não há nenhuma conexão estabelecida a ser desconectada";
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            dialog = ProgressDialog.show(MainActivity.this, "",
+                    "Desconectando...", true);
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            if (dialog.isShowing()) {
+                dialog.dismiss();
+            }
+
+            if(!"".equals(message)) {
+                Toast.makeText(getApplicationContext(), message, Toast.LENGTH_SHORT).show();
+
+                if("DESCONECTADO".equalsIgnoreCase(message)) {
+                    MenuItem menuItemConectar = menu.findItem(R.id.action_conectar);
+                    menuItemConectar.setVisible(true);
+
+                    MenuItem menuItemDesconectar = menu.findItem(R.id.action_desconectar);
+                    menuItemDesconectar.setVisible(false);
+                }
+            }
+        }
+    }
+
+    private void sendData(String message) {
+        byte[] msgBuffer = message.getBytes();
+        try {
+            outStream.write(msgBuffer);
+        } catch (IOException e) {
+            String msg = "In onResume() and an exception occurred during write: " + e.getMessage();
+            if (endereco_MAC_do_Bluetooth_Remoto.equals("00:00:00:00:00:00"))
+                msg = msg + ".\n\nUpdate your server address to the correct address in the java code";
+            msg = msg + ".\n\nCheck that the SPP UUID: " + MEU_UUID.toString() + " exists on server.\n\n";
+            errorExit("Fatal Error", msg);
+        }
+    }
+
+    private void errorExit(String title, String message) {
+        Toast msg = Toast.makeText(getBaseContext(),
+                title + " - " + message, Toast.LENGTH_SHORT);
+        msg.show();
+        finish();
     }
 }
