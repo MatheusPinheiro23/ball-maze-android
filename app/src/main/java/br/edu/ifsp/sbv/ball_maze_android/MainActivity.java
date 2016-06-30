@@ -50,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private OutputStream outStream = null;
 
     private Integer xOldValue = 0;
+    private Integer yOldValue = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,10 +123,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         if (bluetoothSocket != null && bluetoothSocket.isConnected()) {
 
-            if (x.intValue() != xOldValue) {
-                sendData(String.valueOf(x.intValue()));
+            if (x.intValue() != xOldValue || y.intValue() != yOldValue) {
+                sendData(String.valueOf(x.intValue() + ";" + y.intValue()));
                 xOldValue = x.intValue();
+                yOldValue = y.intValue();
             }
+
         }
     }
 
@@ -159,7 +162,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     protected void onPause() {
         super.onPause();
         mSensorManager.unregisterListener(this);
-
     }
 
     private class Conectar extends AsyncTask<Void, Void, Void> {
@@ -285,8 +287,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void sendData(String message) {
-        byte[] msgBuffer = message.getBytes();
+
+        System.out.println("Sending data: " + message);
+
         try {
+            message += '\r';
+            byte[] msgBuffer = message.getBytes();
             outStream.write(msgBuffer);
         } catch (IOException e) {
             String msg = "In onResume() and an exception occurred during write: " + e.getMessage();
