@@ -15,13 +15,37 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="@string/label_acelerometro"
+        android:textSize="16dp"
+        android:textStyle="bold"
+        android:id="@+id/textTagAcelerometer"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginBottom="10dp"/>
+
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="2dp"
+        android:background="#CCCCCC"
+        android:layout_alignBottom="@+id/textTagAcelerometer"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="X"
-        android:id="@+id/textViewX" />
+        android:textSize="14dp"
+        android:id="@+id/textViewX"
+        android:layout_below="@+id/textTagAcelerometer"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Y"
+        android:textSize="14dp"
         android:id="@+id/textViewY"
         android:layout_below="@+id/textViewX"
         android:layout_alignParentLeft="true"
@@ -31,8 +55,64 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Z"
+        android:textSize="14dp"
         android:id="@+id/textViewZ"
         android:layout_below="@+id/textViewY"
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/label_bluetooth"
+        android:textSize="16dp"
+        android:textStyle="bold"
+        android:id="@+id/textTagBluetooth"
+        android:layout_below="@+id/textViewZ"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginBottom="10dp"
+        android:layout_marginTop="20dp"/>
+
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="2dp"
+        android:background="#CCCCCC"
+        android:layout_alignBottom="@+id/textTagBluetooth"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"/>
+
+    <ImageView
+        android:id="@+id/bluetoothStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/disconnected"
+        android:minWidth="30dp"
+        android:minHeight="30dp"
+        android:layout_below="@+id/textTagBluetooth"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/label_desconectado"
+        android:textSize="14dp"
+        android:id="@+id/textBluetoothStatus"
+        android:layout_alignTop="@+id/bluetoothStatus"
+        android:layout_toRightOf="@+id/bluetoothStatus"
+        android:layout_toEndOf="@+id/bluetoothStatus"
+        android:layout_alignBottom="@+id/bluetoothStatus"
+        android:gravity="center_vertical"/>
+
+    <ImageView
+        android:id="@+id/mazeImageView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/maze_front"
+        android:layout_marginTop="57dp"
+        android:minWidth="250dp"
+        android:minHeight="250dp"
+        android:layout_below="@+id/textTagBluetooth"
+        android:layout_centerHorizontal="true" />
 </RelativeLayout>

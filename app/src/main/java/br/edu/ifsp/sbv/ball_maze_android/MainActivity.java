@@ -10,12 +10,15 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import br.edu.ifsp.sbv.ball_maze_android.interfaces.AsyncResponse;
-import br.edu.ifsp.sbv.ball_maze_android.utils.BluetoothConnection;
-import br.edu.ifsp.sbv.ball_maze_android.utils.BluetoothConstants;
+import br.edu.ifsp.sbv.ball_maze_android.bluetooth.BluetoothConnection;
+import br.edu.ifsp.sbv.ball_maze_android.bluetooth.BluetoothConstants;
+import br.edu.ifsp.sbv.ball_maze_android.utils.BallMazeConstants;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
 
@@ -29,6 +32,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView xText;
     private TextView yText;
     private TextView zText;
+    private TextView textBluetoothStatus;
+
+    private ImageView mazeImageView;
+    private ImageView bluetoothStatus;
 
     private Integer xOldValue = 0;
     private Integer yOldValue = 0;
@@ -41,9 +48,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        // Verifica e cria coneão bluetooth
-        btConn = new BluetoothConnection(getApplicationContext(), this);
-
         // Inicializa sensor acelerometro
         mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null) {
@@ -52,12 +56,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         } else {
             // Nao tem acelerometro
-            Toast.makeText(getApplicationContext(), "Não existe suporte para o sensor acelerômetro", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), BallMazeConstants.ACCELEROMETER_NOT_SUPPORTED, Toast.LENGTH_SHORT).show();
+            finish();
         }
 
         xText = (TextView) findViewById(R.id.textViewX);
         yText = (TextView) findViewById(R.id.textViewY);
         zText = (TextView) findViewById(R.id.textViewZ);
+        textBluetoothStatus = (TextView) findViewById(R.id.textBluetoothStatus);
+
+        mazeImageView = (ImageView) findViewById(R.id.mazeImageView);
+        bluetoothStatus = (ImageView) findViewById(R.id.bluetoothStatus);
+
+        // Verifica e cria conexão bluetooth
+        btConn = new BluetoothConnection(getApplicationContext(), this);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override
@@ -71,28 +85,47 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Float y = event.values[1];
         Float z = event.values[2];
 
-         /*
-        Os valores ocilam de -10 a 10.
-        Quanto maior o valor de X mais ele ta caindo para a esquerda - Positivo Esqueda
-        Quanto menor o valor de X mais ele ta caindo para a direita  - Negativo Direita
-        Se o valor de  X for 0 então o celular ta em pé - Nem Direita Nem Esquerda
-        Se o valor de Y for 0 então o cel ta "deitado"
-         Se o valor de Y for negativo então ta de cabeça pra baixo, então quanto menor y mais ele ta inclinando pra ir pra baixo
-        Se o valor de Z for 0 então o dispositivo esta reto na horizontal.
-        Quanto maioro o valor de Z Mais ele esta inclinado para frente
-        Quanto menor o valor de Z Mais ele esta inclinado para traz.
-        */
-        xText.setText("Posição X: " + x.intValue() + " Float: " + x);
-        yText.setText("Posição Y: " + y.intValue() + " Float: " + y);
-        zText.setText("Posição Z: " + z.intValue() + " Float: " + z);
+        xText.setText(String.format(BallMazeConstants.POSITION_MESSAGE, "X", x.intValue(), x));
+        yText.setText(String.format(BallMazeConstants.POSITION_MESSAGE, "Y", y.intValue(), y));
+        zText.setText(String.format(BallMazeConstants.POSITION_MESSAGE, "Z", z.intValue(), z));
 
         if (btConn.isConnected()
                 && (x.intValue() != xOldValue || y.intValue() != yOldValue)) {
 
-                btConn.sendData(String.valueOf(x.intValue() + ";" + y.intValue()));
-                xOldValue = x.intValue();
-                yOldValue = y.intValue();
+            btConn.sendData(String.valueOf(x.intValue() + ";" + y.intValue()));
+            xOldValue = x.intValue();
+            yOldValue = y.intValue();
+
+            drawMazeImage(x.intValue(), y.intValue());
         }
+    }
+
+    /**
+     * Metodo para desenhar o labirinto no aplicativo na posicao em que se encontra
+     * @param x eixo X
+     * @param y eixo Y
+     */
+    private void drawMazeImage(int x, int y) {
+
+        int res = R.drawable.maze_front;
+
+        if (x == 0) {
+            if (y > 0) res = R.drawable.maze_down;
+            if (y < 0) res = R.drawable.maze_up;
+        } else if(y == 0) {
+            if (x > 0) res = R.drawable.maze_left;
+            if (x < 0) res = R.drawable.maze_right;
+        } else if (x > 0 && y > 0) {
+            res = R.drawable.maze_down_left;
+        } else if (x < 0 && y < 0) {
+            res = R.drawable.maze_up_right;
+        } else if (x < 0 && y > 0) {
+            res = R.drawable.maze_down_right;
+        } else if (x > 0 && y < 0) {
+            res = R.drawable.maze_up_left;
+        }
+
+        mazeImageView.setImageResource(res);
     }
 
     @Override
@@ -107,6 +140,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                         public void processFinish(Object output) {
                             menu.findItem(R.id.action_conectar).setVisible(false);
                             menu.findItem(R.id.action_desconectar).setVisible(true);
+                            textBluetoothStatus.setText(R.string.label_conectado);
+                            bluetoothStatus.setImageResource(R.drawable.connected);
                         }
                     });
                 } else {
@@ -116,13 +151,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             case R.id.action_desconectar:
 
-                btConn.sendData(String.valueOf("-10;-10"));
+                btConn.sendData(String.valueOf(BallMazeConstants.RESTART_POSITION));
+                drawMazeImage(0,0);
 
                 btConn.desconectar(new AsyncResponse() {
                     @Override
                     public void processFinish(Object output) {
                         menu.findItem(R.id.action_conectar).setVisible(true);
                         menu.findItem(R.id.action_desconectar).setVisible(false);
+                        textBluetoothStatus.setText(R.string.label_desconectado);
+                        bluetoothStatus.setImageResource(R.drawable.disconnected);
                     }
                 });
                 break;

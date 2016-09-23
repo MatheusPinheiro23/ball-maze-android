@@ -1,5 +1,10 @@
 <resources>
-    <string name="app_name">ball-maze-android</string>
+    <string name="app_name">Labirinto Arduino</string>
     <string name="action_conectar">Conectar</string>
     <string name="action_desconectar">Desconectar</string>
+    <string name="label_conectado">Conectado</string>
+    <string name="label_desconectado">Desconectado</string>
+    <string name="label_bluetooth">Status da Conexão Bluetooth</string>
+    <string name="label_acelerometro">Leitura do Acelerômetro</string>
+
 </resources>

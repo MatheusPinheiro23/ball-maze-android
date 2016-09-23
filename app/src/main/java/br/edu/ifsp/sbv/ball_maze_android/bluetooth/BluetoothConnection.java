@@ -1,4 +1,4 @@
-package br.edu.ifsp.sbv.ball_maze_android.utils;
+package br.edu.ifsp.sbv.ball_maze_android.bluetooth;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -102,14 +102,15 @@ public class BluetoothConnection {
      */
     public class Conectar extends AsyncTask<Void, Void, Void> {
 
-        public AsyncResponse delegate = null;//Call back interface
+        public AsyncResponse delegate = null;
 
         private ProgressDialog dialog;
         private String message = "";
+        private boolean error = false;
 
         public Conectar (AsyncResponse asyncResponse){
             this.dialog = new ProgressDialog(context);
-            delegate = asyncResponse; //Assigning call back interfacethrough constructor
+            delegate = asyncResponse;
         }
 
         @Override
@@ -139,6 +140,7 @@ public class BluetoothConnection {
             } catch (IOException e) {
 
                 message = BluetoothConstants.MSG_LOG_CONNECTION_ERROR + e.getMessage() + ".";
+                error = true;
                 Log.d(BluetoothConstants.LOG_TAG, message);
             }
 
@@ -160,10 +162,10 @@ public class BluetoothConnection {
             }
 
             if(!BluetoothConstants.MSG_EMPTY.equals(message)) {
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show();
             }
 
-            delegate.processFinish(true);
+            if (!error) delegate.processFinish(true);
         }
     }
 
@@ -186,7 +188,7 @@ public class BluetoothConnection {
 
             if (btSocket != null) {
                 try {
-                    // Immediately close this socket, and release all associated resources.
+                    // Fecha o socket e libera variáveis de conexão
                     btSocket.close();
                     btSocket = null;
                     message = BluetoothConstants.MSG_BLUETOOTH_DISCONNECTED;
@@ -215,7 +217,7 @@ public class BluetoothConnection {
             }
 
             if(!BluetoothConstants.MSG_EMPTY.equals(message)) {
-                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, message, Toast.LENGTH_LONG).show();
 
                 delegate.processFinish(true);
             }
@@ -236,12 +238,18 @@ public class BluetoothConnection {
             byte[] msgBuffer = message.getBytes();
             outStream.write(msgBuffer);
         } catch (IOException e) {
-            String msg = "No método onResume() ocorreu uma exceção: " + e.getMessage();
-            if (BluetoothConstants.MAC_BLUETOOTH.equals("00:00:00:00:00:00"))
-                msg = msg + ".\n\nAtualize o MAC para o valor correto";
-            msg = msg + ".\n\ne verifique se o SPP UUID " + BluetoothConstants.UUID_BLUETOOTH.toString() + " existe no servidor.\n\n";
 
-            Toast.makeText(context, "Erro Fatal - " + msg, Toast.LENGTH_SHORT).show();
+            StringBuilder errMessage = new StringBuilder(BluetoothConstants.MSG_BLUETOOTH_FATAL_ERROR);
+
+            if (BluetoothConstants.MAC_BLUETOOTH.equals(BluetoothConstants.MAC_BLUETOOTH_ERROR)) {
+                errMessage.append(BluetoothConstants.MSG_BLUETOOTH_ERROR_RESUME);
+            } else {
+                errMessage.append(String.format(BluetoothConstants.MSG_BLUETOOTH_ERROR_RESUME2,
+                        e.getMessage(), BluetoothConstants.UUID_BLUETOOTH.toString()));
+            }
+
+            Toast.makeText(context, errMessage.toString(), Toast.LENGTH_SHORT).show();
+
             activity.finish();
         }
     }
